@@ -8,6 +8,8 @@ library(tidyverse) #for data manipulation
 library(here) # for creating unbreakable file paths
 
 # Read-in Data -----------------------------------------------------------------
-nesting23 <- read.csv(here("Honu-Jolly-Seber", "Data", "Nesting23.csv"))
+nesting23 <- read.csv(here("Data", "Nesting23.csv")) #read-in raw nesting data 
 
-# Data Analysis ----------------------------------------------------------------
+# Clean Data ----------------------------------------------------------------
+nesting23 <- nesting23[nesting23$Area== "Tern",] #removes all East Island nesting instances
+
