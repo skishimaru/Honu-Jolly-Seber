@@ -27,11 +27,11 @@ night_detect <- nesting23 %>% group_by(TURTLEID, jday, .drop= FALSE) %>% #select
   summarise("count"= n(), "detect"= as.numeric(any(count>= 1))) %>% #calculate the number of times each turtle was seen a night and use counts for detection col
   select(TURTLEID, jday, detect) %>% spread(jday, detect) #remove count col and edit df so it's in detection matrix format
 
-write.csv(night_detect, here("outputs", "nightly_detection.csv")) #export nightly detection matrix to csv
+write.table(night_detect, here("outputs", "nightly_detection.txt")) #export nightly detection matrix to csv
 
 # Weekly Detection Matrix ------------------------------------------------------
 weekly_detect <- nesting23 %>% group_by(TURTLEID, week, .drop= FALSE) %>% #select the only columns needed for analysis
   summarise("count"= n(), "detect"= as.numeric(any(count>= 1))) %>% #calculate the number of times each turtle was seen a week and use counts for detection col
   select(TURTLEID, week, detect) %>% spread(week, detect) #remove count col and edit df so it's in detection matrix format
-
-write.csv(weekly_detect, here("outputs", "weekly_detection.csv")) #export weekly detection matrix to csv
+  
+write.table(weekly_detect, here("outputs", "weekly_detection.txt")) #export weekly detection matrix to csv
