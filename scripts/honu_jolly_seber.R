@@ -110,8 +110,10 @@ jags.js.ms.txt <- function(){  #CHANGED FROM BOOK SINK FUNCTION
 
 # Model Analysis ---------------------------------------------------------------
 #Load data
-honu <- as.matrix(read.table(here("outputs", "weekly_detection.txt"), sep= "", header= F))
-honu <- honu %>% select(!TURTLEID)
+honu <- as.matrix(read.table(here("outputs", "weekly_detection.txt"))) #pull in detection txt
+honu <- honu[, colnames(honu) != "TURTLEID"] #remove turtle ID column
+honu <- unname(honu) #remove header
+
 nz <- 299
 CH.aug <- rbind(honu, matrix(0, ncol= dim(honu)[2], nrow= nz))
 
