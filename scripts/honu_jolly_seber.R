@@ -2,7 +2,7 @@
 # This model only includes nesting data collected from Tern Island in 2023
 # Created by: Shelbie Ishimaru
 # Created on: 2024-09-09
-# Last edited: 2024-09-19
+# Last edited: 2024-10-24
 ################################################################################
 # Preface ----------------------------------------------------------------------
 # This model is a learning tool for me to begin applying Bayesian analysis to real honu data
@@ -14,6 +14,7 @@
 library(R2jags) #to run JAGS
 library(shinystan) #to run shiny stan
 library(tidyverse) #to utilize pipe operators
+library(here) #to create unbreakable file paths
 
 # Constructing JAGS Model ------------------------------------------------------
 jags.js.ms.txt <- function(){  #CHANGED FROM BOOK SINK FUNCTION
@@ -35,11 +36,11 @@ jags.js.ms.txt <- function(){  #CHANGED FROM BOOK SINK FUNCTION
   
   # Priors and constraints
   for (t in 1:(n.occasions-1)){
-    phi[t] <- mean.phi
+    phi[t] <- mean.phi #renesting/persistence
     gamma[t] ~ dunif(0, 1) #Prior for entry probabilities
-    p[t] <- mean.p
+    p[t] <- mean.p #capture
   }
-  mean.phi ~ dunif(0, 1) #Prior for mean survival
+  mean.phi ~ dunif(0, 1) #Prior for mean renesting
   mean.p ~ dunif(0, 1) #Prior for mean capture
   
   #Define state-transition and observation matrices
@@ -114,47 +115,51 @@ honu <- as.matrix(read.table(here("outputs", "weekly_detection.txt"))) #pull in 
 honu <- honu[, colnames(honu) != "TURTLEID"] #remove turtle ID column
 honu <- unname(honu) #remove header
 
-nz <- 299
-CH.aug <- rbind(honu, matrix(0, ncol= dim(honu)[2], nrow= nz))
-
 #Add dummy occasion
-CH.du <- cbind(rep(0, dim(CH.aug)[1]), CH)
+CH.du <- cbind(rep(0, dim(honu)[1]), honu) # add extra col at start so that honu are not seen on first day
+CH.du #look at edited df
 
 # Code to fix error from: https://groups.google.com/g/hmecology/c/S4HO-tnzep8?pli=1 START
-my.z.init <- CH.du
+my.z.init <- CH.du #create z matrix out of new df with added 0 at the start
 
-first.one <- apply(my.z.init[,1:ncol(CH.du)], 1, function(x) min(which(x == 1)))
-last.one  <- apply(my.z.init[,1:ncol(CH.du)], 1, function(x) max(which(x == 1)))
+first.one <- apply(my.z.init[,1:ncol(CH.du)], 1, function(x) min(which(x == 1))) #identify the first nesting occurrence for each honu
+last.one  <- apply(my.z.init[,1:ncol(CH.du)], 1, function(x) max(which(x == 1))) #identify the last nesting occurrence for each honu
 
-for(i in 1:nrow(my.z.init)) {
-  my.z.init[i,     first.one[i]  : last.one[i]        ] = 2
-  if(first.one[i] > 1)               my.z.init[i,                1  : (first.one[i] - 1) ] = 1
-  if(last.one[i]  < ncol(my.z.init)) my.z.init[i, (last.one[i] + 1) : ncol(my.z.init)    ] = 3
+for(i in 1:nrow(my.z.init)) { #create function to edit each row to reflect true start and end nesting periods for each honu
+  if(first.one[i] > 1)               my.z.init[i,                1  : (first.one[i] - 1) ] = 4 #make all values before the first nest= 4 (to be changed later...)
+  if(last.one[i]  < ncol(my.z.init)) my.z.init[i, (last.one[i] + 1) : ncol(my.z.init)    ] = 3 #make all values after the last nest= 3 (keep, reflects intended z)
 }
 # Code to fix error from: https://groups.google.com/g/hmecology/c/S4HO-tnzep8?pli=1 END
+
+#DO I WANT TO AUGMENT THE DATA?
+nz <- 500 #number of rows we want our observation matrix to be augmented
+CH.ms <- rbind(CH.du, matrix(0, ncol = dim(CH.du)[2], nrow = nz)) #create observation matrix
 
 #Recode CH matrix: a 0 is not allowed in WinBUGS!
 CH.ms[CH.ms==0] <- 2 #Not seen = 2, seen = 1
 
 #Code to fix error from: https://groups.google.com/g/hmecology/c/S4HO-tnzep8?pli=1
-my.z.init.ms <- rbind(my.z.init, matrix(0, ncol = dim(my.z.init)[2], nrow = nz))
-my.z.init.ms[my.z.init.ms==0] <- 1
+my.z.init.ms <- rbind(my.z.init, matrix(0, ncol = dim(my.z.init)[2], nrow = nz)) #create final z matrix
+my.z.init.ms[my.z.init.ms==1] <- 2 #correctly identify all nesting instances 
+my.z.init.ms[my.z.init.ms==0] <- 3 #correctly identify all not nesting instances (this mainly tackles internesting instances)
+my.z.init.ms[my.z.init.ms==4] <- 1 #correctly identify all pre-nesting instances
+my.z.init.ms #look at z matrix
 
 #Bundle data
 jags.data <- list(y = CH.ms, n.occasions = dim(CH.ms)[2], M = dim(CH.ms)[1])
 
 inits <- function(){list(mean.phi = runif(1, 0, 1), #Code to fix error from: https://groups.google.com/g/hmecology/c/S4HO-tnzep8?pli=1
                          mean.p = runif(1, 0, 1),
-                         z = cbind(rep(NA, dim(my.z.init.ms)[1]), my.z.init.ms[,-1]))}
+                         z = my.z.init.ms)} #z= cbind(rep(1, dim(my.z.init.ms)[1]), my.z.init.ms[,-1])))}
 
 #Parameters monitored
 params <- c("mean.p", "mean.phi", "b", "Nsuper", "N", "B")
 
 # MCMC settings
-ni <- 20000
-nt <- 3
-nb <- 5000
-nc <- 3
+ni <- 20000 #number of interactions
+nt <- 3 #thinning rate
+nb <- 5000 #burn-in length
+nc <- 3 #number of chains, to check for convergence
 
 #Call JAGS from R
 js.ms <- jags(data  = jags.data,
