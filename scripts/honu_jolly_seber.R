@@ -73,9 +73,9 @@ jags.js.ms.txt <- function(){  #CHANGED FROM BOOK SINK FUNCTION
     z[i,1] <- 1 #Make sure that all M individuals are in state 1 at t=1
     for (t in 2:n.occasions){
       #State process: draw S(t) given S(t-1)
-      z[i,t] ~ dcat(ps[z[i,t-1], i, t-1,])
+      z[i,t] ~ dcat(ps[z[i,t-1], i, t-1,]) #calculate categorical likelihood
       #Observation process: draw O(t) given S(t)
-      y[i,t] ~ dcat(po[z[i,t], i, t-1,])
+      y[i,t] ~ dcat(po[z[i,t], i, t-1,]) #calculate categorical likelihood
     } 
   } 
   #Calculate derived population parameters
