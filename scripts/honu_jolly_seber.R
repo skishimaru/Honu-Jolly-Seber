@@ -128,48 +128,73 @@ jags.js.ms.txt <- function(){  #CHANGED FROM BOOK SINK FUNCTION
 honu <- read.table(here("outputs", "weekly_detection.txt")) #pull in detection txt
 honu <- honu[, colnames(honu) != "TURTLEID"] #remove turtle ID column
 honu <- unname(honu) #remove header
+rownames(honu) <- NULL
 honu <- as.matrix(honu)
+
+nz <- 500 #number of rows we want our observation matrix to be augmented
 
 #Add dummy occasion
 CH.du <- cbind(rep(0, dim(honu)[1]), honu) # add extra col at start so that honu are not seen on first day
+
+#Augment the data
+CH.du <- rbind(CH.du, matrix(0, ncol = dim(CH.du)[2], nrow = nz))
+
 CH.du #look at edited df
 
-z.data <- CH.du #create final z matrix to pass to data
-z.data[z.data==1] <- 2 #correctly identify all nesting instances 
-z.data[z.data==0] <- NA #correctly identify all other instances
-z.data
-
-# Code to fix error from: https://groups.google.com/g/hmecology/c/S4HO-tnzep8?pli=1 START
-my.z.init <- CH.du #create z matrix out of new df with added 0 at the start
-
-first.one <- apply(my.z.init[,1:ncol(CH.du)], 1, function(x) min(which(x == 1))) #identify the first nesting occurrence for each honu
-last.one  <- apply(my.z.init[,1:ncol(CH.du)], 1, function(x) max(which(x == 1))) #identify the last nesting occurrence for each honu
-
-for(i in 1:nrow(my.z.init)) { #create function to edit each row to reflect true start and end nesting periods for each honu
-  if(first.one[i] > 1)               my.z.init[i,                1  : (first.one[i] - 1) ] = 5 #make all values before the first nest= 4 (to be changed later...)
-  if(last.one[i]  < ncol(my.z.init)) my.z.init[i, (last.one[i] + 1) : ncol(my.z.init)    ] = 4 #make all values after the last nest (correctly identify all post Lalo instances)
-} #at this point: 5= Pre Lalo, 1= Nesting, 0= Internesting, and 4= Post Lalo
-
-my.z.init.ms <- rbind(my.z.init, matrix(0, ncol = dim(my.z.init)[2], nrow = nz)) #create final z matrix to pass to init
-my.z.init.ms[my.z.init.ms==1] <- NA #correctly identify all nesting instances 
-my.z.init.ms[my.z.init.ms==0] <- 3 #correctly identify all internesting instances
-my.z.init.ms[my.z.init.ms==5] <- 1 #correctly identify all pre Lalo instances
-my.z.init.ms #look at z matrix. Now: 1= Pre Lalo, NA= Nesting, 3= Internesting, 4= Post Lalo
-# Code to fix error from: https://groups.google.com/g/hmecology/c/S4HO-tnzep8?pli=1 END
-
-nz <- 500 #number of rows we want our observation matrix to be augmented
-CH.ms <- rbind(CH.du, matrix(0, ncol = dim(CH.du)[2], nrow = nz)) #create observation matrix
-
 #Recode CH matrix: a 0 is not allowed in WinBUGS!
+CH.ms <- CH.du
 CH.ms[CH.ms==0] <- 2 #Not seen = 2, seen = 1
 CH.ms  #final capture history matrix to be passed to data
 
-#Bundle data
-jags.data <- list(y = CH.ms, n.occasions = dim(CH.ms)[2], M = dim(CH.ms)[1])
+known.state.ms <- CH.ms #create final known state z matrix to pass to data
+known.state.ms[known.state.ms==2] <- NA #correctly identify all other instances
+known.state.ms
 
-inits <- function(){list(mean.phi = runif(1, 0, 1), #Code to fix error from: https://groups.google.com/g/hmecology/c/S4HO-tnzep8?pli=1
+my.z.init.ms <- CH.ms #create initial z matrix to pass to init
+my.z.init.ms[my.z.init.ms==1] <- NA #correctly identify all other instances
+my.z.init.ms
+
+#NOT USING RN: START -------------------------------------------------------------
+# Code to fix error from: https://groups.google.com/g/hmecology/c/S4HO-tnzep8?pli=1 START
+#my.z.init <- CH.du #create z matrix out of new df with added 0 at the start
+
+#first.one <- apply(my.z.init[,1:ncol(CH.du)], 1, function(x) min(which(x == 1))) #identify the first nesting occurrence for each honu
+#last.one  <- apply(my.z.init[,1:ncol(CH.du)], 1, function(x) max(which(x == 1))) #identify the last nesting occurrence for each honu
+
+#for(i in 1:nrow(my.z.init)) { #create function to edit each row to reflect true start and end nesting periods for each honu
+  #if(first.one[i] > 1)               my.z.init[i,                1  : (first.one[i] - 1) ] = 5 #make all values before the first nest= 4 (to be changed later...)
+  #if(last.one[i]  < ncol(my.z.init)) my.z.init[i, (last.one[i] + 1) : ncol(my.z.init)    ] = 4 #make all values after the last nest (correctly identify all post Lalo instances)
+#} #at this point: 5= Pre Lalo, 1= Nesting, 0= Internesting, and 4= Post Lalo
+
+#my.z.init.ms <- rbind(my.z.init, matrix(0, ncol = dim(my.z.init)[2], nrow = nz)) #create final z matrix to pass to init
+#my.z.init.ms[my.z.init.ms==1] <- NA #correctly identify all nesting instances 
+#my.z.init.ms[my.z.init.ms==0] <- 3 #correctly identify all internesting instances
+#my.z.init.ms[my.z.init.ms==5] <- 1 #correctly identify all pre Lalo instances
+#my.z.init.ms #look at z matrix. Now: 1= Pre Lalo, NA= Nesting, 3= Internesting, 4= Post Lalo
+# Code to fix error from: https://groups.google.com/g/hmecology/c/S4HO-tnzep8?pli=1 END
+
+#Augment the data
+#CH.du <- rbind(CH.du, matrix(0, ncol = dim(CH.du)[2], nrow = nz))
+
+#known.state.ms <- CH.du #create final z matrix to pass to data
+#known.state.ms[known.state.ms==1] <- 2 #correctly identify all nesting instances 
+#known.state.ms[known.state.ms==0] <- NA #correctly identify all other instances
+#known.state.ms
+
+#CH.ms <- rbind(CH.du, matrix(0, ncol = dim(CH.du)[2], nrow = nz)) #create observation matrix
+
+#Recode CH matrix: a 0 is not allowed in WinBUGS!
+#CH.ms <- CH.du
+#CH.ms[CH.ms==0] <- 2 #Not seen = 2, seen = 1
+#CH.ms  #final capture history matrix to be passed to data
+#NOT USING RN: END -------------------------------------------------------------
+
+#Bundle data
+jags.data <- list(y = CH.ms, n.occasions = dim(CH.ms)[2], M = dim(CH.ms)[1], z= known.state.ms) 
+
+inits <- function(){list(mean.phi = runif(1, 0, 1), 
                          mean.p = runif(1, 0, 1),
-                         z= cbind(rep(NA, dim(my.z.init.ms)[1]), my.z.init.ms[,-1]))} 
+                         z= cbind(rep(NA, dim(my.z.init.ms)[1]), my.z.init.ms[,-1]))} #cbind(rep(NA, dim(my.z.init.ms)[1]), my.z.init.ms[,-1])
 
 #Parameters monitored
 params <- c("mean.p", "mean.phi", "b", "Nsuper", "N", "B")
