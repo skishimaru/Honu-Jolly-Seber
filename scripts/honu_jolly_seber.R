@@ -2,7 +2,7 @@
 # This model only includes nesting data collected from Tern Island in 2023
 # Created by: Shelbie Ishimaru
 # Created on: 2024-09-09
-# Last edited: 2024-11-07
+# Last edited: 2024-11-29
 ################################################################################
 # Preface ----------------------------------------------------------------------
 # This model is a learning tool for me to begin applying Bayesian analysis to real honu data
@@ -194,7 +194,7 @@ jags.data <- list(y = CH.ms, n.occasions = dim(CH.ms)[2], M = dim(CH.ms)[1], z= 
 
 inits <- function(){list(mean.phi = runif(1, 0, 1), 
                          mean.p = runif(1, 0, 1),
-                         z= cbind(rep(NA, dim(my.z.init.ms)[1]), my.z.init.ms[,-1]))} #cbind(rep(NA, dim(my.z.init.ms)[1]), my.z.init.ms[,-1])
+                         z= cbind(rep(NA, dim(my.z.init.ms)[1]), my.z.init.ms[,-1]))} 
 
 #Parameters monitored
 params <- c("mean.p", "mean.phi", "b", "Nsuper", "N", "B")
