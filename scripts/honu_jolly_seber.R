@@ -53,13 +53,13 @@ jags.js.ms.txt <- function(){  #CHANGED FROM BOOK SINK FUNCTION
       ps[1,i,t,4] <- 0 #prob a turtle that arrived at Lalo will leave (zero b/c they didn't nest yet)
       
       ps[2,i,t,1] <- 0 #prob a turtle that nested will arrive at Lalo (0 b/c they already arrived and nested)
-      ps[2,i,t,2] <- phi[t]*0.5 #prob a turtle that nested will nest (0 b/c we know they take a break between clutches)
-      ps[2,i,t,3] <- phi[t]*0.5 #prob a turtle that nested will begin an internesting interval (if they survive they will have an internesting interval then nest again)
+      ps[2,i,t,2] <- phi[t]*0.5 #CHANGED to phi[t]*0.5 because weekly detections had back to back nesting instances (prior comment: prob a turtle that nested will nest (0 b/c we know they take a break between clutches))
+      ps[2,i,t,3] <- phi[t]*0.5 #CHANGED to phi[t]*0.5 because weekly detections had back to back nesting instances (prior comment: prob a turtle that nested will begin an internesting interval (if they survive they will have an internesting interval then nest again))
       ps[2,i,t,4] <- 1-phi[t] #prob a turtle that nested will leave Lalo (if they "die" then they leave)
       
       ps[3,i,t,1] <- 0 #prob a turtle that completed an internesting interval will arrive at Lalo (0 b/c they already arrived and nested)
-      ps[3,i,t,2] <- 0.5 #prob a turtle that completed an internesting interval will nest (1 b/c that will always happen)
-      ps[3,i,t,3] <- 0.5 #prob a turtle that completed an internesting interval will have another internesting interval (0 b/c they just took a break)
+      ps[3,i,t,2] <- 0.5 #CHANGED to 0.5 because weekly detections had back to back internesting weeks (prior comment: prob a turtle that completed an internesting interval will nest (1 b/c that will always happen))
+      ps[3,i,t,3] <- 0.5 #CHANGED to 0.5 because weekly detections had back to back internesting weeks (prior comment: prob a turtle that completed an internesting interval will have another internesting interval (0 b/c they just took a break))
       ps[3,i,t,4] <- 0 #prob at turtle that completed an internesting interval will leave Lalo (0 b/c they can only leave after nesting)
       
       ps[4,i,t,1] <- 0 #prob a turtle that left lalo will arrive at Lalo (0 b/c they already arrived, nested, and left)
@@ -173,7 +173,7 @@ known.state.ms #look at known state z matrix. Now: NA= Pre Lalo, 2= Nesting, NA=
 #Create Initial Z Matrix to Pass to inits
 my.z.init.ms <- my.z #create initial z matrix to pass to init
 my.z.init.ms[my.z.init.ms==2] <- NA #correctly identify all other instances
-my.z.init.ms#look at initial z matrix. Now: 1= Pre Lalo, NA= Nesting, 3= Internesting, 4= Post Lalo
+my.z.init.ms #look at initial z matrix. Now: 1= Pre Lalo, NA= Nesting, 3= Internesting, 4= Post Lalo
 
 #Bundle data
 jags.data <- list(y = CH.ms.fin, n.occasions = dim(CH.ms.fin)[2], M = dim(CH.ms.fin)[1], z= known.state.ms) 
