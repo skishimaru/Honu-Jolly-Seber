@@ -1,13 +1,13 @@
 # Initial multi-state jolly-seber model for honu 
 # Created by: Shelbie Ishimaru
 # Created on: 2024-09-09
-# Last edited: 2024-12-04
+# Last edited: 2024-12-17
 ################################################################################
 # Preface ----------------------------------------------------------------------
 # This model is a learning tool for me to begin applying Bayesian analysis to real honu data
 # This model only includes Tern Island night (nesting) survey data from the 2023 field season
 # This model is highly simplified and assumes 4 states (Pre Lalo (not yet nested), Nesting, Internesting interval, and Post Lalo)
-# The code within this script is mainly adapted from chapter 10.3.2 & 10.4.2 of Bayesian Population Analysis using WinBUGS
+# The code within this script is mainly adapted from chapter 10.3.2, 10.4.2, and 9.2.3 of Bayesian Population Analysis using WinBUGS
 
 # Initialization ---------------------------------------------------------------
 library(R2jags) #to run JAGS
@@ -22,6 +22,8 @@ jags.js.ms.txt <- function(){  #CHANGED FROM BOOK SINK FUNCTION
   #Parameters:
   # phi: survival probability
   # gamma: entry probability
+  # psiAB: Movement probability from nesting to internesting
+  # psiBA: Movement probability from internesting to nesting
   # p: capture probability
   #-----------------------------------
   #States (S):
@@ -38,10 +40,15 @@ jags.js.ms.txt <- function(){  #CHANGED FROM BOOK SINK FUNCTION
   for (t in 1:(n.occasions-1)){
     phi[t] <- mean.phi #survival
     gamma[t] ~ dunif(0, 1) #Prior for entry probabilities
+    psiAB[t] <- mean.psi[1] #added from chapter 9.2.3, for nesting to internesting transition
+    psiBA[t] <- mean.psi[2] #added from chapter 9.2.3, for internesting to nesting transition
     p[t] <- mean.p #capture
   }
   mean.phi ~ dunif(0, 1) #Prior for mean survival
   mean.p ~ dunif(0, 1) #Prior for mean capture
+  for (u in 1:2){ #added from chapter 9.2.3
+    mean.psi[u] ~ dunif(0,1) #for nesting/internesting transition
+  }
   
   #Define state-transition and observation matrices
   for (i in 1:M){
@@ -53,13 +60,13 @@ jags.js.ms.txt <- function(){  #CHANGED FROM BOOK SINK FUNCTION
       ps[1,i,t,4] <- 0 #prob a turtle that arrived at Lalo will leave (zero b/c they didn't nest yet)
       
       ps[2,i,t,1] <- 0 #prob a turtle that nested will arrive at Lalo (0 b/c they already arrived and nested)
-      ps[2,i,t,2] <- phi[t]*0.5 #CHANGED to phi[t]*0.5 because weekly detections had back to back nesting instances (prior comment: prob a turtle that nested will nest (0 b/c we know they take a break between clutches))
-      ps[2,i,t,3] <- phi[t]*0.5 #CHANGED to phi[t]*0.5 because weekly detections had back to back nesting instances (prior comment: prob a turtle that nested will begin an internesting interval (if they survive they will have an internesting interval then nest again))
+      ps[2,i,t,2] <- phi[t] * (1-psiAB[t]) #CHANGED to phi[t]*1-psiAB because weekly detections had back to back nesting instances (prior comment: prob a turtle that nested will nest (0 b/c we know they take a break between clutches))
+      ps[2,i,t,3] <- phi[t] * psiAB[t] #CHANGED to phi[t]*psiAB because weekly detections had back to back nesting instances (prior comment: prob a turtle that nested will begin an internesting interval (if they survive they will have an internesting interval then nest again))
       ps[2,i,t,4] <- 1-phi[t] #prob a turtle that nested will leave Lalo (if they "die" then they leave)
       
       ps[3,i,t,1] <- 0 #prob a turtle that completed an internesting interval will arrive at Lalo (0 b/c they already arrived and nested)
-      ps[3,i,t,2] <- 0.5 #CHANGED to 0.5 because weekly detections had back to back internesting weeks (prior comment: prob a turtle that completed an internesting interval will nest (1 b/c that will always happen))
-      ps[3,i,t,3] <- 0.5 #CHANGED to 0.5 because weekly detections had back to back internesting weeks (prior comment: prob a turtle that completed an internesting interval will have another internesting interval (0 b/c they just took a break))
+      ps[3,i,t,2] <- psiBA[t] #CHANGED to psiBA because weekly detections had back to back internesting weeks (prior comment: prob a turtle that completed an internesting interval will nest (1 b/c that will always happen))
+      ps[3,i,t,3] <- 1-psiBA[t] #CHANGED to 1-psiBA because weekly detections had back to back internesting weeks (prior comment: prob a turtle that completed an internesting interval will have another internesting interval (0 b/c they just took a break))
       ps[3,i,t,4] <- 0 #prob at turtle that completed an internesting interval will leave Lalo (0 b/c they can only leave after nesting)
       
       ps[4,i,t,1] <- 0 #prob a turtle that left lalo will arrive at Lalo (0 b/c they already arrived, nested, and left)
